@@ -282,7 +282,6 @@ def get_driver(browser):
             chrome_opts.binary_location = os.path.join(
                 opts.chrome_binary_path, "chrome"
             )
-
         chrome_opts.add_argument("--disable-dev-shm-usage")
         chrome_opts.add_argument("--ignore-ssl-errors")
         chrome_opts.add_argument("--ignore-certificate-errors")
@@ -304,7 +303,9 @@ def get_driver(browser):
             chrome_opts.add_argument("--headless")
 
         # chromedriver needs this flag when running as root
-        if os.geteuid() == 0 or opts.disable_chrome_sandbox:
+        import os
+        import platform
+        if (hasattr(os, "geteuid") and os.geteuid() == 0) or opts.disable_chrome_sandbox:
             chrome_opts.add_argument("--no-sandbox")
 
         if opts.chrome_binary_path is not None:
@@ -319,7 +320,13 @@ def get_driver(browser):
 
 
 # Make sure existing processes aren't running
-procs = subprocess.check_output(["ps", "aux"]).decode("utf-8").split("\n")
+import subprocess
+import platform
+
+if platform.system() == "Windows":
+    procs = subprocess.check_output(["tasklist"]).decode("mbcs").split("\n")
+else:
+    procs = subprocess.check_output(["ps", "aux"]).decode("utf-8").split("\n")
 
 for term in ["python", "chrome", "safaridriver"]:
     conflicts = []
@@ -406,7 +413,7 @@ if opts.attacker_type == "javascript":
         return send_from_directory("attacker", path)
 
     flask_thread = threading.Thread(target=app.run, kwargs={"port": 1234})
-    flask_thread.setDaemon(True)
+    flask_thread.daemon = True
     flask_thread.start()
 
     if opts.browser != Browser.SAFARI:
